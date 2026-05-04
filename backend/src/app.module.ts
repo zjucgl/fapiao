@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { TeamsModule } from './teams/teams.module';
 import { UsersModule } from './users/users.module';
 import { OssModule } from './oss/oss.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -31,6 +32,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     TeamsModule,
     UsersModule,
     OssModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [
