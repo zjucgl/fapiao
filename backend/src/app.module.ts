@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { loadEnvConfig } from './config/env.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { TeamsModule } from './teams/teams.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -20,6 +21,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     JwtModule.register({}),
     PrismaModule,
     AuthModule,
+    TeamsModule,
   ],
   controllers: [AppController],
   providers: [
