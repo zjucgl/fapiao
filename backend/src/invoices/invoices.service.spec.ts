@@ -269,3 +269,84 @@ describe('InvoicesService.signImageUrl', () => {
     expect(out.url).toBe('https://signed-proof/');
   });
 });
+
+describe('InvoicesService admin scope', () => {
+  let svc: InvoicesService;
+  let prisma: ReturnType<typeof mockPrisma>;
+
+  beforeEach(async () => {
+    prisma = mockPrisma();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        InvoicesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: OssService, useValue: ossStub },
+      ],
+    }).compile();
+    svc = moduleRef.get(InvoicesService);
+  });
+
+  it('listForTeam scopes by teamId only (no operatorId from caller)', async () => {
+    prisma.invoice.findMany.mockResolvedValue([]);
+    prisma.invoice.count.mockResolvedValue(0);
+    await svc.listForTeam({ teamId: 1n }, {} as any);
+    const args = prisma.invoice.findMany.mock.calls[0][0];
+    expect(args.where).toMatchObject({ teamId: 1n, deletedAt: null });
+    expect(args.where.operatorId).toBeUndefined();
+  });
+
+  it('getForTeam returns invoice when in team', async () => {
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: 1n, teamId: 1n, operatorId: 7n,
+      paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed,
+      createdAt: new Date(), updatedAt: new Date(),
+      invoiceImages: [], proofImages: [], operator: { username: 'op_a' },
+    });
+    const out = await svc.getForTeam({ teamId: 1n }, 1n);
+    expect(out.id).toBe('1');
+  });
+
+  it('getForTeam throws NotFound for cross-team', async () => {
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    await expect(svc.getForTeam({ teamId: 1n }, 99n)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('register sets amount + invoiceType', async () => {
+    prisma.invoice.findFirst.mockResolvedValue({ id: 1n, teamId: 1n, deletedAt: null, amount: null, invoiceType: null });
+    prisma.invoice.update.mockResolvedValue({ id: 1n });
+    await svc.register({ teamId: 1n, adminId: 2n }, 1n, { amount: 99.5, invoiceType: InvoiceType.catering });
+    const args = prisma.invoice.update.mock.calls[0][0];
+    expect(args.data.amount?.toString()).toBe('99.5');
+    expect(args.data.invoiceType).toBe(InvoiceType.catering);
+  });
+
+  it('register preserves unspecified fields', async () => {
+    prisma.invoice.findFirst.mockResolvedValue({
+      id: 1n, teamId: 1n, deletedAt: null,
+      amount: { toString: () => '50.00' }, invoiceType: InvoiceType.fuel,
+    });
+    prisma.invoice.update.mockResolvedValue({ id: 1n });
+    await svc.register({ teamId: 1n, adminId: 2n }, 1n, { amount: 75 });
+    const args = prisma.invoice.update.mock.calls[0][0];
+    expect(args.data.amount?.toString()).toBe('75');
+    expect(args.data.invoiceType).toBe(InvoiceType.fuel);
+  });
+
+  it('register throws NotFound when cross-team', async () => {
+    prisma.invoice.findFirst.mockResolvedValue(null);
+    await expect(
+      svc.register({ teamId: 1n, adminId: 2n }, 99n, { amount: 1 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('batchProcess marks all matching ids in one query', async () => {
+    prisma.invoice.updateMany.mockResolvedValue({ count: 3 });
+    const r = await svc.batchProcess({ teamId: 1n, adminId: 2n }, [1n, 2n, 3n]);
+    expect(r.count).toBe(3);
+    const args = prisma.invoice.updateMany.mock.calls[0][0];
+    expect(args.where).toMatchObject({ teamId: 1n, id: { in: [1n, 2n, 3n] }, deletedAt: null });
+    expect(args.data.status).toBe(InvoiceStatus.processed);
+    expect(args.data.processedBy).toBe(2n);
+    expect(args.data.processedAt).toBeInstanceOf(Date);
+  });
+});

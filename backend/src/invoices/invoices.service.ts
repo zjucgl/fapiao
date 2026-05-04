@@ -209,6 +209,54 @@ export class InvoicesService {
     return { url, expiresInSec: 300 };
   }
 
+  // ---------- Admin scope ----------
+
+  async listForTeam(scope: TeamScope, q: ListInvoicesQueryDto) {
+    const where = this.buildWhere({ teamId: scope.teamId }, q);
+    const [items, total] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: q.pageSize ?? 50,
+        skip: ((q.page ?? 1) - 1) * (q.pageSize ?? 50),
+        include: { invoiceImages: true, proofImages: true, operator: { select: { username: true } } },
+      }),
+      this.prisma.invoice.count({ where }),
+    ]);
+    return { items: items.map((it: any) => this.shapeInvoiceFull(it)), total, page: q.page ?? 1, pageSize: q.pageSize ?? 50 };
+  }
+
+  async getForTeam(scope: TeamScope, invoiceId: bigint) {
+    const inv = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, teamId: scope.teamId, deletedAt: null },
+      include: { invoiceImages: true, proofImages: true, operator: { select: { username: true } } },
+    });
+    if (!inv) throw new NotFoundException(`invoice ${invoiceId} not found`);
+    return this.shapeInvoiceFull(inv as any);
+  }
+
+  async register(actor: { teamId: bigint; adminId: bigint }, invoiceId: bigint, dto: { amount?: number; invoiceType?: InvoiceType }) {
+    const inv = await this.prisma.invoice.findFirst({
+      where: { id: invoiceId, teamId: actor.teamId, deletedAt: null },
+    });
+    if (!inv) throw new NotFoundException(`invoice ${invoiceId} not found`);
+    return this.prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        amount: dto.amount === undefined ? inv.amount : new Prisma.Decimal(dto.amount),
+        invoiceType: dto.invoiceType === undefined ? inv.invoiceType : dto.invoiceType,
+      },
+    });
+  }
+
+  async batchProcess(actor: { teamId: bigint; adminId: bigint }, ids: bigint[]) {
+    const result = await this.prisma.invoice.updateMany({
+      where: { teamId: actor.teamId, id: { in: ids }, deletedAt: null },
+      data: { status: InvoiceStatus.processed, processedAt: new Date(), processedBy: actor.adminId },
+    });
+    return { count: result.count };
+  }
+
   protected shapeInvoiceFull(inv: any) {
     return {
       id: inv.id.toString(),
