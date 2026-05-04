@@ -6,8 +6,17 @@ import { buildOssKey } from '../oss/key-naming';
 import { ListInvoicesQueryDto } from './dto/list-invoices.dto';
 import { UpdateInvoiceByOperatorDto } from './dto/update-invoice-by-operator.dto';
 
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
-const MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif',
+  'image/tiff', 'image/bmp',
+  'application/pdf',
+  'application/octet-stream', // 部分浏览器对 HEIC 报这个，靠扩展名兜底
+]);
+const ALLOWED_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.tif', '.tiff', '.bmp', '.pdf',
+]);
+const MAX_BYTES = 20 * 1024 * 1024;  // iPhone HEIC 可能稍大，给到 20MB
 const MAX_FILES_PER_KIND = 10;
 
 export interface UploadedFile {
@@ -49,8 +58,16 @@ export class InvoicesService {
       throw new BadRequestException(`max ${MAX_FILES_PER_KIND} files per kind`);
     }
     for (const f of [...input.invoiceImages, ...input.proofImages]) {
-      if (!ALLOWED_MIME.has(f.mimetype)) throw new BadRequestException(`disallowed mime: ${f.mimetype}`);
-      if (f.size > MAX_BYTES) throw new BadRequestException(`file too large: ${f.originalname}`);
+      const ext = (f.originalname.match(/\.[^.]+$/)?.[0] ?? '').toLowerCase();
+      const mimeOk = ALLOWED_MIME.has(f.mimetype);
+      const extOk = ALLOWED_EXT.has(ext);
+      // 接受条件：MIME 在白名单 OR 扩展名在白名单（HEIC/HEIF 在某些浏览器里 mime 是 application/octet-stream）
+      if (!mimeOk && !extOk) {
+        throw new BadRequestException(`disallowed file: ${f.originalname} (mime=${f.mimetype})`);
+      }
+      if (f.size > MAX_BYTES) {
+        throw new BadRequestException(`file too large (>${MAX_BYTES / 1024 / 1024}MB): ${f.originalname}`);
+      }
     }
 
     const result: any = await this.prisma.$transaction(async (tx: any) => {

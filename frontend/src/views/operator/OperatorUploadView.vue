@@ -10,14 +10,26 @@ const invoiceFiles = ref<UploaderFileListItem[]>([]);
 const proofFiles = ref<UploaderFileListItem[]>([]);
 const submitting = ref(false);
 
-const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const MAX = 10 * 1024 * 1024;
+const ALLOWED_MIME = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif', 'image/tiff', 'image/bmp',
+  'application/pdf',
+  'application/octet-stream', // 部分浏览器对 HEIC 报这个，靠扩展名兜底
+]);
+const ALLOWED_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.tif', '.tiff', '.bmp', '.pdf',
+]);
+const MAX = 20 * 1024 * 1024;
 
 function validate(file: File | File[]) {
   const files = Array.isArray(file) ? file : [file];
   for (const f of files) {
-    if (!ALLOWED.includes(f.type)) { showToast({ type: 'fail', message: `不支持的文件: ${f.type}` }); return false; }
-    if (f.size > MAX) { showToast({ type: 'fail', message: `文件超过 10MB: ${f.name}` }); return false; }
+    const ext = '.' + (f.name.split('.').pop() ?? '').toLowerCase();
+    if (!ALLOWED_MIME.has(f.type) && !ALLOWED_EXT.has(ext)) {
+      showToast({ type: 'fail', message: `不支持的文件: ${f.name}（${f.type || '未知类型'}）` });
+      return false;
+    }
+    if (f.size > MAX) { showToast({ type: 'fail', message: `文件超过 20MB: ${f.name}` }); return false; }
   }
   return true;
 }
@@ -54,15 +66,15 @@ async function onSubmit() {
       </Cell>
     </CellGroup>
 
-    <CellGroup inset title="发票图片">
+    <CellGroup inset title="发票（图片或 PDF）">
       <Cell>
-        <Uploader v-model="invoiceFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf" />
+        <Uploader v-model="invoiceFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf,.heic,.heif,.tiff,.tif,.bmp" />
       </Cell>
     </CellGroup>
 
-    <CellGroup inset title="支付凭证">
+    <CellGroup inset title="支付凭证（图片或 PDF）">
       <Cell>
-        <Uploader v-model="proofFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf" />
+        <Uploader v-model="proofFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf,.heic,.heif,.tiff,.tif,.bmp" />
       </Cell>
     </CellGroup>
 
