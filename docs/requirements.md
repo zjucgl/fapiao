@@ -352,16 +352,26 @@ CREATE TABLE payment_proof_images (
 
 ### 7.1 环境
 
-- 阿里云 ECS 1 台（推荐 2c4g 起步），Ubuntu 22.04。
-- 阿里云 RDS MySQL 8.0，与 ECS 同 VPC，内网连接。
-- 阿里云 OSS 私有桶，与 ECS 同 region 减少流量费。
-- 域名 + 阿里云免费 SSL 证书。
+- **ECS**：阿里云 ECS，公网 IP `42.121.162.104`（推荐 2c4g 起步），Ubuntu 22.04。
+- **域名**：`fp.fuwu.huayihui.art`，A 记录指向上述 IP。
+- **数据库**：阿里云 RDS MySQL 8.0，地址 `ezcook2014.mysql.rds.aliyuncs.com`，库名 `fapiao_db`。
+  - 推荐 ECS 与 RDS 同 VPC，启用内网连接以降延迟、省流量。
+- **对象存储**：阿里云 OSS 私有桶 `huayihui-lib`（region：`oss-cn-hangzhou`），所有对象放在 `fapiao/` 前缀下。
+- **SSL**：推荐 acme.sh + Let's Encrypt 自动签发与续期，或阿里云免费证书。
+
+### 7.1.1 服务器加固
+
+- SSH 仅允许密钥登录，禁用 `PasswordAuthentication`；可考虑改非 22 端口。
+- 阿里云安全组：入方向仅放行 22（限运维 IP）、80、443。
+- 启用防火墙（ufw / firewalld）双重保险。
+- 系统包定期更新；Node、Nginx 跟主流 LTS。
 
 ### 7.2 部署架构
 
-- Nginx：80/443 → 反代到 Node 进程；同时托管前端静态文件。
+- Nginx：80/443 → 反代到 Node 进程（默认 `127.0.0.1:3000`）；同时托管前端静态文件。
 - PM2：守护后端 Node 进程，集群模式（CPU 核数）。
-- 前后端同域，前端走 `/`，API 走 `/api/*`，避免跨域。
+- 前后端同域 `https://fp.fuwu.huayihui.art`，前端走 `/`，API 走 `/api/*`，避免跨域。
+- HTTP（80）强制 301 跳 HTTPS（443）。
 - 日志：PM2 日志 + Nginx access log，按天滚动。
 
 ### 7.3 配置项（环境变量）
