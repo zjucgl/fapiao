@@ -353,7 +353,7 @@ CREATE TABLE payment_proof_images (
 ### 7.1 环境
 
 - **ECS**：阿里云 ECS，公网 IP `42.121.162.104`（推荐 2c4g 起步），Ubuntu 22.04。
-- **域名**：`fp.fuwu.huayihui.art`，A 记录指向上述 IP。
+- **域名**：`fp.app.huayihui.art`，A 记录指向上述 IP。
 - **数据库**：阿里云 RDS MySQL 8.0，地址 `ezcook2014.mysql.rds.aliyuncs.com`，库名 `fapiao_db`。
   - 推荐 ECS 与 RDS 同 VPC，启用内网连接以降延迟、省流量。
 - **对象存储**：阿里云 OSS 私有桶 `huayihui-lib`（region：`oss-cn-hangzhou`），所有对象放在 `fapiao/` 前缀下。
@@ -370,7 +370,7 @@ CREATE TABLE payment_proof_images (
 
 - Nginx：80/443 → 反代到 Node 进程（默认 `127.0.0.1:3000`）；同时托管前端静态文件。
 - PM2：守护后端 Node 进程，集群模式（CPU 核数）。
-- 前后端同域 `https://fp.fuwu.huayihui.art`，前端走 `/`，API 走 `/api/*`，避免跨域。
+- 前后端同域 `https://fp.app.huayihui.art`，前端走 `/`，API 走 `/api/*`，避免跨域。
 - HTTP（80）强制 301 跳 HTTPS（443）。
 - 日志：PM2 日志 + Nginx access log，按天滚动。
 
