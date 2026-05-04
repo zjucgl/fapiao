@@ -8,6 +8,7 @@ import { loadEnvConfig } from './config/env.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './common/guards/auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -21,6 +22,9 @@ import { AuthGuard } from './common/guards/auth.guard';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [{ provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}
