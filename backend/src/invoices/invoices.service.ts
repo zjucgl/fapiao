@@ -257,6 +257,22 @@ export class InvoicesService {
     return { count: result.count };
   }
 
+  buildExportToken(payload: object, ttlSec: number, secret: string): string {
+    const body = Buffer.from(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + ttlSec })).toString('base64url');
+    const sig = require('crypto').createHmac('sha256', secret).update(body).digest('base64url');
+    return `${body}.${sig}`;
+  }
+
+  parseExportToken<T = any>(token: string, secret: string): T | null {
+    const [body, sig] = token.split('.');
+    if (!body || !sig) return null;
+    const expected = require('crypto').createHmac('sha256', secret).update(body).digest('base64url');
+    if (expected !== sig) return null;
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (parsed.exp && parsed.exp < Math.floor(Date.now() / 1000)) return null;
+    return parsed as T;
+  }
+
   protected shapeInvoiceFull(inv: any) {
     return {
       id: inv.id.toString(),

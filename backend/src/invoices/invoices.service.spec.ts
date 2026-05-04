@@ -350,3 +350,40 @@ describe('InvoicesService admin scope', () => {
     expect(args.data.processedAt).toBeInstanceOf(Date);
   });
 });
+
+describe('InvoicesService export tokens', () => {
+  let svc: InvoicesService;
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        InvoicesService,
+        { provide: PrismaService, useValue: mockPrisma() },
+        { provide: OssService, useValue: ossStub },
+      ],
+    }).compile();
+    svc = moduleRef.get(InvoicesService);
+  });
+
+  it('round-trips a valid token', () => {
+    const tok = svc.buildExportToken({ teamId: '1', ids: ['1', '2'], part: 'xlsx' }, 60, 'secret-x');
+    const parsed = svc.parseExportToken<{ teamId: string; ids: string[]; part: string }>(tok, 'secret-x');
+    expect(parsed?.teamId).toBe('1');
+    expect(parsed?.ids).toEqual(['1', '2']);
+    expect(parsed?.part).toBe('xlsx');
+  });
+
+  it('rejects with wrong secret', () => {
+    const tok = svc.buildExportToken({ x: 1 }, 60, 'right');
+    expect(svc.parseExportToken(tok, 'wrong')).toBeNull();
+  });
+
+  it('rejects expired token', () => {
+    const tok = svc.buildExportToken({ x: 1 }, -1, 'secret-x');
+    expect(svc.parseExportToken(tok, 'secret-x')).toBeNull();
+  });
+
+  it('rejects malformed token', () => {
+    expect(svc.parseExportToken('not.a.token', 'secret-x')).toBeNull();
+    expect(svc.parseExportToken('', 'secret-x')).toBeNull();
+  });
+});
