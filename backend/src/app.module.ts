@@ -4,6 +4,7 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { loadEnvConfig } from './config/env.config';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PrismaModule } from './prisma/prisma.module';
       load: [() => ({ app: loadEnvConfig(process.env) })],
     }),
     PrismaModule,
+    AuthModule,
   ],
   controllers: [AppController],
 })
