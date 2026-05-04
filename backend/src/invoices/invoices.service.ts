@@ -180,6 +180,35 @@ export class InvoicesService {
     };
   }
 
+  async signImageUrl(
+    actor: { role: Role; teamId: bigint | null; userId: bigint },
+    kind: 'invoice' | 'proof',
+    invoiceId: bigint,
+    imageId: bigint,
+  ): Promise<{ url: string; expiresInSec: number }> {
+    const row: any = kind === 'invoice'
+      ? await this.prisma.invoiceImage.findUnique({
+          where: { id: imageId },
+          include: { invoice: { select: { id: true, teamId: true, operatorId: true, deletedAt: true } } },
+        })
+      : await this.prisma.paymentProofImage.findUnique({
+          where: { id: imageId },
+          include: { invoice: { select: { id: true, teamId: true, operatorId: true, deletedAt: true } } },
+        });
+    if (!row || !row.invoice || row.invoice.id !== invoiceId || row.invoice.deletedAt) {
+      throw new NotFoundException('image not found');
+    }
+    const inv = row.invoice;
+    if (actor.role === Role.super_admin) throw new NotFoundException('image not found');
+    if (actor.role === Role.team_admin) {
+      if (actor.teamId === null || inv.teamId !== actor.teamId) throw new NotFoundException('image not found');
+    } else if (actor.role === Role.operator) {
+      if (inv.teamId !== actor.teamId || inv.operatorId !== actor.userId) throw new NotFoundException('image not found');
+    }
+    const url = this.oss.signedUrl(row.ossKey);
+    return { url, expiresInSec: 300 };
+  }
+
   protected shapeInvoiceFull(inv: any) {
     return {
       id: inv.id.toString(),

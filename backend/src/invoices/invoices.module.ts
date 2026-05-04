@@ -3,6 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { InvoicesService } from './invoices.service';
 import { OperatorInvoicesController } from './operator-invoices.controller';
+import { ImagesController } from './images.controller';
 
 @Module({
   imports: [
@@ -11,7 +12,7 @@ import { OperatorInvoicesController } from './operator-invoices.controller';
       limits: { fileSize: 10 * 1024 * 1024, files: 25 },
     }),
   ],
-  controllers: [OperatorInvoicesController],
+  controllers: [OperatorInvoicesController, ImagesController],
   providers: [InvoicesService],
   exports: [InvoicesService],
 })

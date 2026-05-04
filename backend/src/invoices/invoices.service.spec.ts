@@ -168,3 +168,104 @@ describe('InvoicesService operator read paths', () => {
     expect(args.data.deletedAt).toBeInstanceOf(Date);
   });
 });
+
+describe('InvoicesService.signImageUrl', () => {
+  let svc: InvoicesService;
+  let prisma: ReturnType<typeof mockPrisma>;
+  const oss = {
+    getPrefix: () => 'fapiao/',
+    putObject: jest.fn(),
+    signedUrl: jest.fn(),
+    deleteObject: jest.fn(),
+    getStream: jest.fn(),
+  } as unknown as OssService;
+
+  beforeEach(async () => {
+    prisma = mockPrisma();
+    (oss.signedUrl as jest.Mock).mockReset();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        InvoicesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: OssService, useValue: oss },
+      ],
+    }).compile();
+    svc = moduleRef.get(InvoicesService);
+  });
+
+  it('signs invoice image url for owning operator', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/team_1/202605/invoice_10/invoice_x.jpg',
+      invoice: { id: 10n, teamId: 1n, operatorId: 7n, deletedAt: null },
+    });
+    (oss.signedUrl as jest.Mock).mockReturnValue('https://signed/');
+    const out = await svc.signImageUrl(
+      { role: Role.operator, teamId: 1n, userId: 7n },
+      'invoice', 10n, 5n,
+    );
+    expect(out.url).toBe('https://signed/');
+  });
+
+  it('rejects operator viewing other operator image', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/x.jpg',
+      invoice: { id: 10n, teamId: 1n, operatorId: 99n, deletedAt: null },
+    });
+    await expect(
+      svc.signImageUrl({ role: Role.operator, teamId: 1n, userId: 7n }, 'invoice', 10n, 5n),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('allows team_admin within team', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/x.jpg',
+      invoice: { id: 10n, teamId: 1n, operatorId: 99n, deletedAt: null },
+    });
+    (oss.signedUrl as jest.Mock).mockReturnValue('https://signed/');
+    const out = await svc.signImageUrl({ role: Role.team_admin, teamId: 1n, userId: 1n }, 'invoice', 10n, 5n);
+    expect(out.url).toBe('https://signed/');
+  });
+
+  it('blocks team_admin cross-team', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/x.jpg',
+      invoice: { id: 10n, teamId: 2n, operatorId: 99n, deletedAt: null },
+    });
+    await expect(
+      svc.signImageUrl({ role: Role.team_admin, teamId: 1n, userId: 1n }, 'invoice', 10n, 5n),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('blocks super_admin', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/x.jpg',
+      invoice: { id: 10n, teamId: 1n, operatorId: 99n, deletedAt: null },
+    });
+    await expect(
+      svc.signImageUrl({ role: Role.super_admin, teamId: null, userId: 1n }, 'invoice', 10n, 5n),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects when invoice is soft-deleted', async () => {
+    prisma.invoiceImage.findUnique.mockResolvedValue({
+      id: 5n, ossKey: 'fapiao/x.jpg',
+      invoice: { id: 10n, teamId: 1n, operatorId: 7n, deletedAt: new Date() },
+    });
+    await expect(
+      svc.signImageUrl({ role: Role.operator, teamId: 1n, userId: 7n }, 'invoice', 10n, 5n),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('handles proof images via paymentProofImage table', async () => {
+    prisma.paymentProofImage.findUnique.mockResolvedValue({
+      id: 9n, ossKey: 'fapiao/proof.png',
+      invoice: { id: 10n, teamId: 1n, operatorId: 7n, deletedAt: null },
+    });
+    (oss.signedUrl as jest.Mock).mockReturnValue('https://signed-proof/');
+    const out = await svc.signImageUrl(
+      { role: Role.operator, teamId: 1n, userId: 7n },
+      'proof', 10n, 9n,
+    );
+    expect(out.url).toBe('https://signed-proof/');
+  });
+});
