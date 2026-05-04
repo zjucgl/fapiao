@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { InvoicesService } from './invoices.service';
+import { ExportService } from './export/export.service';
 import { OperatorInvoicesController } from './operator-invoices.controller';
 import { ImagesController } from './images.controller';
 import { AdminInvoicesController } from './admin-invoices.controller';
@@ -14,7 +15,7 @@ import { AdminInvoicesController } from './admin-invoices.controller';
     }),
   ],
   controllers: [OperatorInvoicesController, ImagesController, AdminInvoicesController],
-  providers: [InvoicesService],
-  exports: [InvoicesService],
+  providers: [InvoicesService, ExportService],
+  exports: [InvoicesService, ExportService],
 })
 export class InvoicesModule {}
