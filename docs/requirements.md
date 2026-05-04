@@ -288,7 +288,12 @@ CREATE TABLE payment_proof_images (
 - 上传：前端 → 后端（校验权限 + 类型 + 大小）→ ali-oss SDK 上传 → DB 存 `oss_key`。
 - 访问：前端请求图片 → 后端检查权限 → 用 `signatureUrl(key, { expires: 300 })` 生成 5 分钟签名 URL → 返回前端。
 - OSS 桶 ACL = `private`，绝不开公开读。
-- 命名规则：`{teamId}/{yyyymm}/{invoiceId}/{uuid}.{ext}`，便于按团队按月归档与排查。
+- 项目所有对象统一放在前缀 `fapiao/` 下（与同 Bucket 内其他项目隔离）。
+- 命名规则：`fapiao/team_{teamId}/{yyyymm}/{invoiceId}/{uuid}.{ext}`
+  - 例：`fapiao/team_3/202605/invoice_128/4f1c...a9b.jpg`
+  - 用 `team_{teamId}` 而非团队名，避免中文 / 重命名 / 特殊字符问题
+  - `{yyyymm}` 便于按月巡检与设置生命周期规则
+- OSS AccessKey 应配置最小权限：仅允许 `huayihui-lib` 桶下 `fapiao/*` 前缀的 `PutObject` / `GetObject` / `DeleteObject`。
 
 ### 5.4 安全要点
 
@@ -366,11 +371,13 @@ DATABASE_URL=mysql://user:pass@rds-host:3306/fapiao
 JWT_ACCESS_SECRET=...
 JWT_REFRESH_SECRET=...
 OSS_REGION=oss-cn-hangzhou
-OSS_BUCKET=...
+OSS_BUCKET=huayihui-lib
 OSS_ACCESS_KEY_ID=...
 OSS_ACCESS_KEY_SECRET=...
-SUPER_ADMIN_USERNAME=...
-SUPER_ADMIN_INITIAL_PASSWORD=...   # 仅 seed 时使用
+OSS_KEY_PREFIX=fapiao/
+OSS_SIGNED_URL_EXPIRES_SEC=300
+SUPER_ADMIN_USERNAME=admin
+SUPER_ADMIN_INITIAL_PASSWORD=...   # 仅 seed 时使用，启动后强制改密
 ```
 
 ---
