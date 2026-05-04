@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { NavBar, Tabbar, TabbarItem, Dialog } from 'vant';
+import { NavBar, Tabbar, TabbarItem, showConfirmDialog } from 'vant';
 import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
@@ -27,7 +27,11 @@ const tabs = computed(() => {
 });
 
 async function onLogout() {
-  await Dialog.confirm({ title: '确认退出？', cancelButtonText: '取消', confirmButtonText: '退出' }).catch(() => null);
+  try {
+    await showConfirmDialog({ title: '确认退出？', cancelButtonText: '取消', confirmButtonText: '退出' });
+  } catch {
+    return; // 用户点了取消，不登出
+  }
   auth.logout();
   router.push('/login');
 }
