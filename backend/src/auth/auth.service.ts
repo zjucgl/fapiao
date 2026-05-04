@@ -63,4 +63,37 @@ export class AuthService {
     );
     return { accessToken, refreshToken };
   }
+
+  async refresh(refreshToken: string) {
+    const cfg = this.cfg();
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, {
+        secret: cfg.jwt.refreshSecret,
+      });
+    } catch {
+      throw new UnauthorizedException('invalid refresh token');
+    }
+    if (payload.type !== 'refresh') throw new UnauthorizedException('not a refresh token');
+    const user = await this.prisma.user.findUnique({ where: { id: BigInt(payload.sub) } });
+    if (!user || user.status === UserStatus.disabled) throw new UnauthorizedException();
+    return this.issueTokens({
+      sub: user.id.toString(),
+      username: user.username,
+      role: user.role,
+      teamId: user.teamId?.toString() ?? null,
+    });
+  }
+
+  async changePassword(userId: bigint, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status === UserStatus.disabled) throw new UnauthorizedException();
+    const ok = await this.password.verify(currentPassword, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('current password mismatch');
+    const newHash = await this.password.hash(newPassword);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash, mustChangePassword: false },
+    });
+  }
 }
