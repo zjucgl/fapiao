@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  super_admin
+  team_admin
+  operator
+}
+
+enum TeamStatus {
+  active
+  disabled
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum PaymentMethod {
+  cash
+  online
+}
+
+enum InvoiceStatus {
+  unprocessed
+  processed
+}
+
+enum InvoiceType {
+  catering
+  fuel
+  consumable
+  printing
+  other
+}
+
+model Team {
+  id        BigInt     @id @default(autoincrement())
+  name      String     @unique @db.VarChar(64)
+  status    TeamStatus @default(active)
+  createdAt DateTime   @default(now()) @map("created_at")
+  users     User[]
+  invoices  Invoice[]
+  @@map("teams")
+}
+
+model User {
+  id                  BigInt     @id @default(autoincrement())
+  teamId              BigInt?    @map("team_id")
+  username            String     @unique @db.VarChar(64)
+  passwordHash        String     @map("password_hash") @db.VarChar(255)
+  role                Role
+  mustChangePassword  Boolean    @default(true) @map("must_change_password")
+  status              UserStatus @default(active)
+  lastLoginAt         DateTime?  @map("last_login_at")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  team                Team?      @relation(fields: [teamId], references: [id])
+  invoices            Invoice[]  @relation("InvoiceOperator")
+  @@index([teamId, role])
+  @@map("users")
+}
+
+model Invoice {
+  id             BigInt          @id @default(autoincrement())
+  teamId         BigInt          @map("team_id")
+  operatorId     BigInt          @map("operator_id")
+  amount         Decimal?        @db.Decimal(12, 2)
+  invoiceType    InvoiceType?    @map("invoice_type")
+  paymentMethod  PaymentMethod   @map("payment_method")
+  status         InvoiceStatus   @default(unprocessed)
+  remark         String?         @db.VarChar(200)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  processedAt    DateTime?       @map("processed_at")
+  processedBy    BigInt?         @map("processed_by")
+  deletedAt      DateTime?       @map("deleted_at")
+  team           Team            @relation(fields: [teamId], references: [id])
+  operator       User            @relation("InvoiceOperator", fields: [operatorId], references: [id])
+  invoiceImages  InvoiceImage[]
+  proofImages    PaymentProofImage[]
+  @@index([teamId, status])
+  @@index([teamId, operatorId])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+model InvoiceImage {
+  id                BigInt   @id @default(autoincrement())
+  invoiceId         BigInt   @map("invoice_id")
+  ossKey            String   @map("oss_key") @db.VarChar(512)
+  originalFilename  String   @map("original_filename") @db.VarChar(255)
+  sizeBytes         Int      @map("size_bytes")
+  uploadedAt        DateTime @default(now()) @map("uploaded_at")
+  invoice           Invoice  @relation(fields: [invoiceId], references: [id])
+  @@index([invoiceId])
+  @@map("invoice_images")
+}
+
+model PaymentProofImage {
+  id                BigInt   @id @default(autoincrement())
+  invoiceId         BigInt   @map("invoice_id")
+  ossKey            String   @map("oss_key") @db.VarChar(512)
+  originalFilename  String   @map("original_filename") @db.VarChar(255)
+  sizeBytes         Int      @map("size_bytes")
+  uploadedAt        DateTime @default(now()) @map("uploaded_at")
+  invoice           Invoice  @relation(fields: [invoiceId], references: [id])
+  @@index([invoiceId])
+  @@map("payment_proof_images")
+}

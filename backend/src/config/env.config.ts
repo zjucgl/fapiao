@@ -33,7 +33,9 @@ const REQUIRED = [
   'SUPER_ADMIN_INITIAL_PASSWORD',
 ] as const;
 
-export function loadEnvConfig(env: NodeJS.ProcessEnv | Record<string, string>): AppConfig {
+export function loadEnvConfig(
+  env: NodeJS.ProcessEnv | Record<string, string>,
+): AppConfig {
   for (const key of REQUIRED) {
     if (!env[key]) throw new Error(`Missing required env var: ${key}`);
   }
