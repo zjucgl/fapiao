@@ -28,7 +28,7 @@ async function onSubmit() {
 
 <template>
   <div class="login-wrap">
-    <h1 class="title">fapiao 登录</h1>
+    <h1 class="title">项目团队发票管理系统</h1>
     <Form @submit="onSubmit">
       <CellGroup inset>
         <Field v-model="form.username" name="username" label="账号" placeholder="账号" :rules="[{ required: true, message: '请输入账号' }]" autocomplete="username" />

@@ -39,7 +39,7 @@ async function onLogout() {
 
 <template>
   <div class="app-shell">
-    <NavBar :title="'fapiao'" right-text="退出" @click-right="onLogout" />
+    <NavBar title="项目团队发票管理系统" right-text="退出" @click-right="onLogout" />
     <main class="content">
       <router-view />
     </main>

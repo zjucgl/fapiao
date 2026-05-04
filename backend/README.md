@@ -1,4 +1,4 @@
-# fapiao backend (M1–M4)
+# 项目团队发票管理系统 — 后端 (fapiao backend, M1–M4)
 
 ## Local dev
 
