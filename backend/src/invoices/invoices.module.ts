@@ -4,6 +4,7 @@ import { memoryStorage } from 'multer';
 import { InvoicesService } from './invoices.service';
 import { OperatorInvoicesController } from './operator-invoices.controller';
 import { ImagesController } from './images.controller';
+import { AdminInvoicesController } from './admin-invoices.controller';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { ImagesController } from './images.controller';
       limits: { fileSize: 10 * 1024 * 1024, files: 25 },
     }),
   ],
-  controllers: [OperatorInvoicesController, ImagesController],
+  controllers: [OperatorInvoicesController, ImagesController, AdminInvoicesController],
   providers: [InvoicesService],
   exports: [InvoicesService],
 })
