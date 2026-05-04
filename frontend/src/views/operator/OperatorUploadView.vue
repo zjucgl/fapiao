@@ -68,13 +68,13 @@ async function onSubmit() {
 
     <CellGroup inset title="发票（图片或 PDF）">
       <Cell>
-        <Uploader v-model="invoiceFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf,.heic,.heif,.tiff,.tif,.bmp" />
+        <Uploader v-model="invoiceFiles" multiple :max-count="10" :before-read="validate" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/tiff,image/bmp,application/pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.tiff,.tif,.bmp,.pdf" />
       </Cell>
     </CellGroup>
 
     <CellGroup inset title="支付凭证（图片或 PDF）">
       <Cell>
-        <Uploader v-model="proofFiles" multiple :max-count="10" :before-read="validate" accept="image/*,application/pdf,.heic,.heif,.tiff,.tif,.bmp" />
+        <Uploader v-model="proofFiles" multiple :max-count="10" :before-read="validate" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/tiff,image/bmp,application/pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.tiff,.tif,.bmp,.pdf" />
       </Cell>
     </CellGroup>
 
