@@ -354,8 +354,9 @@ CREATE TABLE payment_proof_images (
 
 - **ECS**：阿里云 ECS，公网 IP `42.121.162.104`（推荐 2c4g 起步），Ubuntu 22.04。
 - **域名**：`fp.app.huayihui.art`，A 记录指向上述 IP。
-- **数据库**：阿里云 RDS MySQL 8.0，地址 `ezcook2014.mysql.rds.aliyuncs.com`，库名 `fapiao_db`。
+- **数据库**：阿里云 RDS MySQL 5.7，地址 `bigdatacenter.mysql.rds.aliyuncs.com`，库名 `fapiao_db`。
   - 推荐 ECS 与 RDS 同 VPC，启用内网连接以降延迟、省流量。
+  - 当前实例账号 `fpuser` 无 CREATE DATABASE 权限，因此 schema 变更走 `prisma migrate deploy`（不用 `migrate dev`，后者需要 shadow database）。本地用临时 8.0 实例生成迁移 SQL 后再 deploy 到生产。
 - **对象存储**：阿里云 OSS 私有桶 `huayihui-lib`（region：`oss-cn-hangzhou`），所有对象放在 `fapiao/` 前缀下。
 - **SSL**：推荐 acme.sh + Let's Encrypt 自动签发与续期，或阿里云免费证书。
 
