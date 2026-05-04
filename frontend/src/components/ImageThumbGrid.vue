@@ -71,7 +71,7 @@ function onClick(idx: number) {
       </template>
 
       <!-- 图片缩略图 -->
-      <VanImage v-else-if="urls[i]" :src="urls[i]" fit="cover" lazy-load />
+      <VanImage v-else-if="urls[i]" :src="urls[i]" fit="cover" />
       <div v-else class="placeholder">…</div>
 
       <div class="cap">{{ img.originalFilename }}</div>
