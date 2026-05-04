@@ -8,6 +8,7 @@ import { loadEnvConfig } from './config/env.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { TeamsModule } from './teams/teams.module';
+import { UsersModule } from './users/users.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -22,6 +23,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     PrismaModule,
     AuthModule,
     TeamsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [
