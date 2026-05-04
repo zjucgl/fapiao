@@ -12,6 +12,11 @@ import { UsersModule } from './users/users.module';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
+// Serialize BigInt as string in JSON responses (must run before any controller sends a response)
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 @Module({
   imports: [
     ConfigModule.forRoot({
