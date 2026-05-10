@@ -53,8 +53,10 @@ export class InvoicesService {
 
   async createByOperator(scope: OperatorScope, input: CreateInvoiceInput) {
     if (!input.invoiceImages?.length) throw new BadRequestException('at least one invoice image required');
-    if (!input.proofImages?.length) throw new BadRequestException('at least one payment proof image required');
-    if (input.invoiceImages.length > MAX_FILES_PER_KIND || input.proofImages.length > MAX_FILES_PER_KIND) {
+    if (input.paymentMethod === PaymentMethod.online && !input.proofImages?.length) {
+      throw new BadRequestException('at least one payment proof image required');
+    }
+    if (input.invoiceImages.length > MAX_FILES_PER_KIND || (input.proofImages?.length ?? 0) > MAX_FILES_PER_KIND) {
       throw new BadRequestException(`max ${MAX_FILES_PER_KIND} files per kind`);
     }
     for (const f of [...input.invoiceImages, ...input.proofImages]) {

@@ -81,13 +81,27 @@ describe('InvoicesService.createByOperator', () => {
     ).rejects.toThrow(/at least one invoice image/i);
   });
 
-  it('rejects when proof images empty', async () => {
+  it('rejects when proof images empty for online payment', async () => {
     await expect(
       svc.createByOperator(
         { teamId: 1n, operatorId: 7n },
         { paymentMethod: PaymentMethod.online, invoiceImages: [{ originalname: 'a.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('x'), size: 1 }], proofImages: [] },
       ),
     ).rejects.toThrow(/at least one payment proof/i);
+  });
+
+  it('allows empty proof images for cash payment', async () => {
+    (ossStub.putObject as jest.Mock).mockResolvedValue(undefined);
+    const out = await svc.createByOperator(
+      { teamId: 1n, operatorId: 7n },
+      {
+        paymentMethod: PaymentMethod.cash,
+        invoiceImages: [{ originalname: 'a.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('x'), size: 1 }],
+        proofImages: [],
+      },
+    );
+    expect(out.id).toBe('100');
+    expect(ossStub.putObject).toHaveBeenCalledTimes(1);
   });
 
   it('rejects disallowed mime type', async () => {

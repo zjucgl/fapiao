@@ -36,7 +36,10 @@ function validate(file: File | File[]) {
 
 async function onSubmit() {
   if (invoiceFiles.value.length === 0) { showToast({ type: 'fail', message: '请上传至少 1 张发票图片' }); return; }
-  if (proofFiles.value.length === 0) { showToast({ type: 'fail', message: '请上传至少 1 张支付凭证' }); return; }
+  if (form.paymentMethod === 'online' && proofFiles.value.length === 0) {
+    showToast({ type: 'fail', message: '请上传至少 1 张支付凭证' });
+    return;
+  }
   submitting.value = true;
   const fd = new FormData();
   fd.append('paymentMethod', form.paymentMethod);
@@ -72,7 +75,7 @@ async function onSubmit() {
       </Cell>
     </CellGroup>
 
-    <CellGroup inset title="支付凭证（图片或 PDF）">
+    <CellGroup inset :title="form.paymentMethod === 'cash' ? '支付凭证（可选，图片或 PDF）' : '支付凭证（图片或 PDF）'">
       <Cell>
         <Uploader v-model="proofFiles" multiple :max-count="10" :before-read="validate" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/tiff,image/bmp,application/pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.tiff,.tif,.bmp,.pdf" />
       </Cell>
