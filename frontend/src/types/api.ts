@@ -48,6 +48,7 @@ export interface InvoiceFull {
   processedBy: string | null;
   invoiceImages: InvoiceImage[];
   proofImages: InvoiceImage[];
+  rowNumber?: number;
 }
 
 export interface InvoiceListResponse {

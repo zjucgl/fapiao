@@ -12,7 +12,13 @@ const dateLabel = computed(() => new Date(props.invoice.createdAt).toLocaleStrin
 </script>
 
 <template>
-  <Cell is-link :title="dateLabel" :label="invoice.remark || ''">
+  <Cell is-link :label="invoice.remark || ''">
+    <template #title>
+      <span class="title-row">
+        <span v-if="invoice.rowNumber != null" class="rownum">#{{ invoice.rowNumber }}</span>
+        <span>{{ dateLabel }}</span>
+      </span>
+    </template>
     <template #right-icon>
       <div class="meta">
         <Tag :type="invoice.status === 'processed' ? 'success' : 'warning'" size="medium">{{ statusLabel }}</Tag>
@@ -24,6 +30,8 @@ const dateLabel = computed(() => new Date(props.invoice.createdAt).toLocaleStrin
 </template>
 
 <style scoped>
+.title-row { display: inline-flex; align-items: center; gap: 6px; }
+.rownum { color: var(--van-gray-6); font-size: 13px; font-weight: 500; }
 .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .amount { font-weight: 600; }
 .sub { font-size: 12px; color: var(--van-gray-6); }

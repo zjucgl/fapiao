@@ -128,6 +128,7 @@ const typeLabel: Record<string, string> = { catering: '餐饮', fuel: '油票', 
         <Cell v-for="inv in items" :key="inv.id" is-link clickable>
           <template #title>
             <Checkbox :model-value="selected.has(inv.id)" shape="square" @click.stop="toggle(inv.id)" />
+            <span v-if="inv.rowNumber != null" class="rownum">#{{ inv.rowNumber }}</span>
             <span @click.stop="open(inv.id)" style="margin-left: 8px;">
               {{ new Date(inv.createdAt).toLocaleDateString('zh-CN') }} · {{ inv.operatorUsername || '-' }}
             </span>
@@ -161,4 +162,5 @@ const typeLabel: Record<string, string> = { catering: '餐饮', fuel: '油票', 
 
 <style scoped>
 .bottom-bar { position: fixed; bottom: 50px; left: 0; right: 0; max-width: var(--max-content-width); margin: 0 auto; display: flex; gap: 8px; padding: 8px; background: white; border-top: 1px solid var(--van-border-color); z-index: 1; }
+.rownum { color: var(--van-gray-6); font-size: 13px; font-weight: 500; margin-left: 8px; }
 </style>
