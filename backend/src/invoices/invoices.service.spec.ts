@@ -181,6 +181,17 @@ describe('InvoicesService operator read paths', () => {
     const args = prisma.invoice.update.mock.calls[0][0];
     expect(args.data.deletedAt).toBeInstanceOf(Date);
   });
+
+  it('listMine attaches rowNumber based on page and pageSize', async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: 10n, teamId: 1n, operatorId: 7n, paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed, amount: null, createdAt: new Date(), updatedAt: new Date(), processedAt: null, processedBy: null, remark: null, invoiceImages: [], proofImages: [], operator: { username: 'op_a' } },
+      { id: 11n, teamId: 1n, operatorId: 7n, paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed, amount: null, createdAt: new Date(), updatedAt: new Date(), processedAt: null, processedBy: null, remark: null, invoiceImages: [], proofImages: [], operator: { username: 'op_a' } },
+    ]);
+    prisma.invoice.count.mockResolvedValue(50);
+    const res = await svc.listMine({ teamId: 1n, operatorId: 7n }, { page: 2, pageSize: 20 } as any);
+    expect(res.items[0].rowNumber).toBe(21);
+    expect(res.items[1].rowNumber).toBe(22);
+  });
 });
 
 describe('InvoicesService.signImageUrl', () => {
@@ -362,6 +373,15 @@ describe('InvoicesService admin scope', () => {
     expect(args.data.status).toBe(InvoiceStatus.processed);
     expect(args.data.processedBy).toBe(2n);
     expect(args.data.processedAt).toBeInstanceOf(Date);
+  });
+
+  it('listForTeam attaches rowNumber based on page and pageSize', async () => {
+    prisma.invoice.findMany.mockResolvedValue([
+      { id: 20n, teamId: 1n, operatorId: 7n, paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed, amount: null, createdAt: new Date(), updatedAt: new Date(), processedAt: null, processedBy: null, remark: null, invoiceImages: [], proofImages: [], operator: { username: 'op_a' } },
+    ]);
+    prisma.invoice.count.mockResolvedValue(100);
+    const res = await svc.listForTeam({ teamId: 1n }, { page: 3, pageSize: 30 } as any);
+    expect(res.items[0].rowNumber).toBe(61);
   });
 });
 

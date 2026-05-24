@@ -130,7 +130,12 @@ export class InvoicesService {
       }),
       this.prisma.invoice.count({ where }),
     ]);
-    return { items: items.map((it: any) => this.shapeInvoiceFull(it)), total, page: q.page ?? 1, pageSize: q.pageSize ?? 50 };
+    const page = q.page ?? 1;
+    const pageSize = q.pageSize ?? 50;
+    return {
+      items: items.map((it: any, idx: number) => ({ ...this.shapeInvoiceFull(it), rowNumber: (page - 1) * pageSize + idx + 1 })),
+      total, page, pageSize,
+    };
   }
 
   async getMine(scope: OperatorScope, invoiceId: bigint) {
@@ -242,7 +247,12 @@ export class InvoicesService {
       }),
       this.prisma.invoice.count({ where }),
     ]);
-    return { items: items.map((it: any) => this.shapeInvoiceFull(it)), total, page: q.page ?? 1, pageSize: q.pageSize ?? 50 };
+    const page = q.page ?? 1;
+    const pageSize = q.pageSize ?? 50;
+    return {
+      items: items.map((it: any, idx: number) => ({ ...this.shapeInvoiceFull(it), rowNumber: (page - 1) * pageSize + idx + 1 })),
+      total, page, pageSize,
+    };
   }
 
   async getForTeam(scope: TeamScope, invoiceId: bigint) {
