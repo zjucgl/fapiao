@@ -1,6 +1,6 @@
 import { api } from './client';
 import type {
-  ExportImageMode, ExportManifest, InvoiceFull, InvoiceListResponse, InvoiceType, PaymentMethod,
+  CreateInvoiceResponse, ExportImageMode, ExportManifest, InvoiceFull, InvoiceListResponse, InvoiceType, PaymentMethod,
 } from '@/types/api';
 
 export interface ListQuery {
@@ -13,7 +13,7 @@ export interface ListQuery {
 export const invoicesApi = {
   myList: (q: ListQuery = {}) => api.get<InvoiceListResponse>('/api/op/invoices', { params: q }).then((r) => r.data),
   myDetail: (id: string) => api.get<InvoiceFull>(`/api/op/invoices/${id}`).then((r) => r.data),
-  myCreate: (form: FormData) => api.post<InvoiceFull>('/api/op/invoices', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
+  myCreate: (form: FormData) => api.post<CreateInvoiceResponse>('/api/op/invoices', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data),
   myUpdate: (id: string, dto: { paymentMethod?: PaymentMethod; remark?: string | null }) =>
     api.patch<InvoiceFull>(`/api/op/invoices/${id}`, dto).then((r) => r.data),
   myDelete: (id: string) => api.delete(`/api/op/invoices/${id}`).then((r) => r.data),

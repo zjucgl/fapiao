@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Cell, CellGroup, Field, RadioGroup, Radio, Uploader, showToast, type UploaderFileListItem } from 'vant';
+import { Button, Cell, CellGroup, Field, RadioGroup, Radio, Uploader, showDialog, showToast, type UploaderFileListItem } from 'vant';
 import { invoicesApi } from '@/api/invoices';
 
 const router = useRouter();
@@ -48,7 +48,20 @@ async function onSubmit() {
   for (const f of proofFiles.value) if (f.file) fd.append('proofImages', f.file, f.file.name);
   try {
     const inv = await invoicesApi.myCreate(fd);
-    showToast({ type: 'success', message: '上传成功' });
+    if (inv.duplicates && inv.duplicates.length > 0) {
+      const lines = inv.duplicates.map((d) => {
+        const isSelf = d.conflictWith.invoiceId === inv.id;
+        const who = d.conflictWith.operatorUsername || (isSelf ? '本次上传' : '其他人');
+        const when = new Date(d.conflictWith.createdAt).toLocaleDateString('zh-CN');
+        return `• ${d.originalFilename}：与发票 #${d.conflictWith.invoiceId}（${when} 由 ${who} 上传）重复`;
+      }).join('\n');
+      await showDialog({
+        title: '检测到重复发票图',
+        message: `${lines}\n\n已为您保留，请核实是否重复报销。`,
+      });
+    } else {
+      showToast({ type: 'success', message: '上传成功' });
+    }
     router.replace({ name: 'op-detail', params: { id: inv.id } });
   } catch (e: any) {
     showToast({ type: 'fail', message: e.response?.data?.message || '上传失败' });

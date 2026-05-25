@@ -58,6 +58,20 @@ export interface InvoiceListResponse {
   pageSize: number;
 }
 
+export interface DuplicateInfo {
+  imageIndex: number;
+  originalFilename: string;
+  conflictWith: {
+    invoiceId: string;
+    createdAt: string;
+    operatorUsername: string | null;
+  };
+}
+
+export interface CreateInvoiceResponse extends InvoiceFull {
+  duplicates: DuplicateInfo[];
+}
+
 export interface ExportPart {
   kind: 'xlsx' | 'invoice-zip' | 'proof-zip';
   href: string;
