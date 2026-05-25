@@ -97,9 +97,11 @@ model InvoiceImage {
   ossKey            String   @map("oss_key") @db.VarChar(512)
   originalFilename  String   @map("original_filename") @db.VarChar(255)
   sizeBytes         Int      @map("size_bytes")
+  contentSha256     String?  @map("content_sha256") @db.Char(64)
   uploadedAt        DateTime @default(now()) @map("uploaded_at")
   invoice           Invoice  @relation(fields: [invoiceId], references: [id])
   @@index([invoiceId])
+  @@index([contentSha256])
   @@map("invoice_images")
 }
 
