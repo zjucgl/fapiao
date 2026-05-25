@@ -16,11 +16,14 @@ function mockPrisma() {
       updateMany: jest.fn(),
       count: jest.fn(),
     },
-    invoiceImage: { create: jest.fn(), findUnique: jest.fn() },
+    invoiceImage: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn() },
     paymentProofImage: { create: jest.fn(), findUnique: jest.fn() },
     $transaction: jest.fn(async (fn: any) => fn({
       invoice: { create: jest.fn().mockResolvedValue({ id: 100n, teamId: 1n, operatorId: 7n, paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed, createdAt: new Date(), updatedAt: new Date(), remark: 'lunch' }) },
-      invoiceImage: { create: jest.fn().mockImplementation(({data}) => Promise.resolve({ id: BigInt(Math.floor(Math.random() * 1e9)), ...data })) },
+      invoiceImage: {
+        create: jest.fn().mockImplementation(({data}) => Promise.resolve({ id: BigInt(Math.floor(Math.random() * 1e9)), ...data })),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       paymentProofImage: { create: jest.fn().mockImplementation(({data}) => Promise.resolve({ id: BigInt(Math.floor(Math.random() * 1e9)), ...data })) },
     })),
   };
@@ -70,6 +73,76 @@ describe('InvoicesService.createByOperator', () => {
     expect(out.id).toBe('100');
     expect(prisma.$transaction).toHaveBeenCalled();
     expect(ossStub.putObject).toHaveBeenCalledTimes(3);
+  });
+
+  it('flags duplicate when same content sha256 already exists in team', async () => {
+    (ossStub.putObject as jest.Mock).mockResolvedValue(undefined);
+    prisma.$transaction = jest.fn(async (fn: any) => fn({
+      invoice: { create: jest.fn().mockResolvedValue({ id: 100n, teamId: 1n, operatorId: 7n, paymentMethod: PaymentMethod.cash, status: InvoiceStatus.unprocessed, createdAt: new Date('2026-05-20T10:00:00Z'), updatedAt: new Date(), remark: null }) },
+      invoiceImage: {
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: BigInt(Math.floor(Math.random() * 1e9)), ...data })),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 50n,
+            invoiceId: 80n,
+            contentSha256: '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+            invoice: {
+              id: 80n,
+              createdAt: new Date('2026-05-10T08:00:00Z'),
+              operator: { username: 'previousOp' },
+            },
+          },
+        ]),
+      },
+      paymentProofImage: { create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: BigInt(Math.floor(Math.random() * 1e9)), ...data })) },
+    }));
+
+    const out = await svc.createByOperator(
+      { teamId: 1n, operatorId: 7n },
+      {
+        paymentMethod: PaymentMethod.cash,
+        invoiceImages: [
+          { originalname: 'dup.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('hello'), size: 5 },
+        ],
+        proofImages: [],
+      },
+    );
+
+    expect((out as any).duplicates).toHaveLength(1);
+    expect((out as any).duplicates[0].originalFilename).toBe('dup.jpg');
+    expect((out as any).duplicates[0].conflictWith.invoiceId).toBe('80');
+    expect((out as any).duplicates[0].conflictWith.operatorUsername).toBe('previousOp');
+  });
+
+  it('detects intra-batch duplicates (two files same content in one upload)', async () => {
+    (ossStub.putObject as jest.Mock).mockResolvedValue(undefined);
+    const out = await svc.createByOperator(
+      { teamId: 1n, operatorId: 7n },
+      {
+        paymentMethod: PaymentMethod.cash,
+        invoiceImages: [
+          { originalname: 'a.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('same-bytes'), size: 10 },
+          { originalname: 'b.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('same-bytes'), size: 10 },
+        ],
+        proofImages: [],
+      },
+    );
+    expect((out as any).duplicates).toHaveLength(1);
+    expect((out as any).duplicates[0].originalFilename).toBe('b.jpg');
+    expect((out as any).duplicates[0].conflictWith.invoiceId).toBe('100');
+  });
+
+  it('returns empty duplicates when no conflicts', async () => {
+    (ossStub.putObject as jest.Mock).mockResolvedValue(undefined);
+    const out = await svc.createByOperator(
+      { teamId: 1n, operatorId: 7n },
+      {
+        paymentMethod: PaymentMethod.cash,
+        invoiceImages: [{ originalname: 'a.jpg', mimetype: 'image/jpeg', buffer: Buffer.from('uniq'), size: 4 }],
+        proofImages: [],
+      },
+    );
+    expect((out as any).duplicates).toEqual([]);
   });
 
   it('rejects when invoice images empty', async () => {

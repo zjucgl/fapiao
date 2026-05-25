@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InvoiceStatus, InvoiceType, PaymentMethod, Prisma, Role } from '@prisma/client';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { OssService } from '../oss/oss.service';
 import { buildOssKey } from '../oss/key-naming';
@@ -42,6 +43,16 @@ export interface CreateInvoiceInput {
   proofImages: UploadedFile[];
 }
 
+export interface DuplicateInfo {
+  imageIndex: number;
+  originalFilename: string;
+  conflictWith: {
+    invoiceId: string;
+    createdAt: Date;
+    operatorUsername: string | null;
+  };
+}
+
 @Injectable()
 export class InvoicesService {
   constructor(
@@ -82,11 +93,67 @@ export class InvoicesService {
         },
       });
 
+      // 计算本批 invoice image 的 sha256；先做批内去重，再查 DB
+      const invoiceImageHashes = input.invoiceImages.map((f) => crypto.createHash('sha256').update(f.buffer).digest('hex'));
+      const intraBatchSeen = new Map<string, number>(); // hash -> first index
+      const intraBatchDup: DuplicateInfo[] = [];
+      invoiceImageHashes.forEach((h, idx) => {
+        if (intraBatchSeen.has(h)) {
+          intraBatchDup.push({
+            imageIndex: idx,
+            originalFilename: input.invoiceImages[idx].originalname,
+            conflictWith: {
+              invoiceId: invoice.id.toString(),
+              createdAt: invoice.createdAt,
+              operatorUsername: null,
+            },
+          });
+        } else {
+          intraBatchSeen.set(h, idx);
+        }
+      });
+
+      const uniqueHashes = Array.from(intraBatchSeen.keys());
+      const dbHits = uniqueHashes.length > 0
+        ? await tx.invoiceImage.findMany({
+            where: {
+              contentSha256: { in: uniqueHashes },
+              invoice: { teamId: scope.teamId, deletedAt: null },
+            },
+            include: { invoice: { select: { id: true, createdAt: true, operator: { select: { username: true } } } } },
+          })
+        : [];
+      const hashToHit = new Map<string, any>();
+      for (const row of dbHits) {
+        if (!hashToHit.has(row.contentSha256!)) hashToHit.set(row.contentSha256!, row);
+      }
+      const dbDup: DuplicateInfo[] = [];
+      intraBatchSeen.forEach((firstIdx, h) => {
+        const hit = hashToHit.get(h);
+        if (hit) {
+          dbDup.push({
+            imageIndex: firstIdx,
+            originalFilename: input.invoiceImages[firstIdx].originalname,
+            conflictWith: {
+              invoiceId: hit.invoice.id.toString(),
+              createdAt: hit.invoice.createdAt,
+              operatorUsername: hit.invoice.operator?.username ?? null,
+            },
+          });
+        }
+      });
+      const duplicates: DuplicateInfo[] = [...dbDup, ...intraBatchDup].sort((a, b) => a.imageIndex - b.imageIndex);
+
       const invoiceImageRows: { id: bigint; ossKey: string }[] = [];
-      for (const f of input.invoiceImages) {
+      for (let i = 0; i < input.invoiceImages.length; i++) {
+        const f = input.invoiceImages[i];
         const key = buildOssKey({ prefix: this.oss.getPrefix(), teamId: scope.teamId, invoiceId: invoice.id, kind: 'invoice', originalFilename: f.originalname });
         const row = await tx.invoiceImage.create({
-          data: { invoiceId: invoice.id, ossKey: key, originalFilename: f.originalname, sizeBytes: f.size },
+          data: {
+            invoiceId: invoice.id, ossKey: key,
+            originalFilename: f.originalname, sizeBytes: f.size,
+            contentSha256: invoiceImageHashes[i],
+          },
         });
         invoiceImageRows.push({ id: row.id as bigint, ossKey: key });
       }
@@ -98,7 +165,7 @@ export class InvoicesService {
         });
         proofImageRows.push({ id: row.id as bigint, ossKey: key });
       }
-      return { invoice, invoiceImageRows, proofImageRows };
+      return { invoice, invoiceImageRows, proofImageRows, duplicates };
     });
 
     try {
@@ -115,7 +182,10 @@ export class InvoicesService {
       throw e;
     }
 
-    return this.shapeInvoiceMinimal(result.invoice, result.invoiceImageRows.length, result.proofImageRows.length);
+    return {
+      ...this.shapeInvoiceMinimal(result.invoice, result.invoiceImageRows.length, result.proofImageRows.length),
+      duplicates: result.duplicates as DuplicateInfo[],
+    };
   }
 
   async listMine(scope: OperatorScope, q: ListInvoicesQueryDto) {
